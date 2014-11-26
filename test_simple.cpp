@@ -32,12 +32,31 @@ long fact(long n, long factor = 1) noexcept
     else return fact(n - 1, factor * n);
 }
 
+long cube(long n) noexcept
+{
+    return n*n*n;
+}
+
 int main()
 {
-    auto sample = [](size_t n) noexcept {
+    auto fact20 = [](size_t n) noexcept {
         for (size_t i = 0; i < n; ++i) enforce(fact(20 + i % 4));
     };
+    auto cube20 = [](size_t n) noexcept {
+        for (size_t i = 0; i < n; ++i) enforce(cube(20 + i % 4));
+    };
+    auto dummy = [](size_t n) noexcept {
+        for (size_t i = 0; i < n; ++i) enforce(i);
+    };
+    auto dummy2 = [](size_t n) noexcept {
+        volatile size_t j;
+        for (size_t i = 0; i < n; ++i) j = i;
+        enforce(j);
+    };
 
-    auto ms = benchmark(sample);
+    cout << "result: " << median(benchmark(fact20)) << endl;
+    cout << "result: " << median(benchmark(cube20)) << endl;
+    cout << "result: " << median(benchmark(dummy)) << endl;
+    cout << "result: " << median(benchmark(dummy2)) << endl;
     return 0;
 }

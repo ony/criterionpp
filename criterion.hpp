@@ -28,12 +28,18 @@
 #include <chrono>
 #include <ratio>
 #include <vector>
+#include <cassert>
 
 namespace criterion {
 
     using seconds = std::chrono::seconds;
 
     using sysclock = std::chrono::system_clock;
+
+    // additional duration types
+    typedef std::chrono::duration<std::chrono::nanoseconds::rep, std::pico> picoseconds;
+    typedef std::chrono::duration<std::chrono::nanoseconds::rep, std::femto> femtoseconds;
+    typedef std::chrono::duration<std::chrono::nanoseconds::rep, std::atto> attoseconds;
 
     struct cpuclock
     {
@@ -60,22 +66,48 @@ namespace criterion {
     struct measure {
         sysclock::duration time;
         cpuclock::duration cpu_time;
-        size_t iters;
+        size_t iters = 0;
 
-        /// Measure the execution of a benchmark a given number of times
+        /// Measure the execution of a benchmark a given number of times.
+        /// Note that result is adjusted according "zero line" which
+        ///      corresponds to cycle with a single statement of storing
+        ///      iteration to volatile stack variable.
         sysclock::time_point run(benchmarkable run, size_t n) noexcept
         {
-            auto start_time = sysclock::now();
+            // align to CPU tick (hint from https://github.com/pernatiy/C-Benchmark)
+            auto run_time = cpuclock::now();
             auto start_cpu_time = cpuclock::now();
+            while (run_time == start_cpu_time) start_cpu_time = cpuclock::now();
+
+            auto start_time = sysclock::now();
             run(n);
-            auto end_time = sysclock::now();
             auto end_cpu_time = cpuclock::now();
+            auto end_time = sysclock::now();
+
+            assert( start_time <= end_time );
+            assert( start_cpu_time <= end_cpu_time );
 
             time = end_time - start_time;
             cpu_time = end_cpu_time - start_cpu_time;
+            if (zero_line.iters > 0) // have zero "line"?
+            {
+                // adjust according to empty benchmark
+                auto adjustment = zero_line.cpu_time * n / zero_line.iters;
+                time -= adjustment;
+                cpu_time -= adjustment;
+
+                static constexpr auto time_zero = decltype(time)::zero();
+                static constexpr auto cpu_time_zero = decltype(cpu_time)::zero();
+
+                // note that time may hop around zero line and may go below it
+                if (time < time_zero) time = time_zero;
+                if (cpu_time < time_zero) cpu_time = cpu_time_zero;
+            }
             iters = n;
             return end_time;
         }
+
+        static measure zero_line;
     };
     std::ostream &operator<<(std::ostream &, const measure &) noexcept;
 
@@ -85,7 +117,15 @@ namespace criterion {
 
     /// Run a single benchmark, and return measurements collected while
     /// executing it.
-    std::vector<measure> benchmark(benchmarkable run, sysclock::duration time_limit = seconds(15)) noexcept;
+    std::vector<measure> benchmark(benchmarkable run, sysclock::duration minimum_time = seconds(5)) noexcept;
 
-    void enforce(int) noexcept;
+    /// Dummy function to force calculation of int expression
+    template <typename T>
+    inline void enforce(T x) noexcept
+    { asm("" : /* no out */ : "r" (x)); } // tell compiler optimizations to back off
+
+    /// Basic analysis
+    measure median(std::vector<measure> &sample) noexcept;
+    inline measure median(std::vector<measure> &&sample) noexcept
+    { return median(sample); }
 } // namespace criterion
