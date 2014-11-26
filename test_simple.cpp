@@ -45,18 +45,19 @@ int main()
     auto cube20 = [](size_t n) noexcept {
         for (size_t i = 0; i < n; ++i) enforce(cube(20 + i % 4));
     };
-    auto dummy = [](size_t n) noexcept {
+    auto noop = [](size_t n) noexcept {
         for (size_t i = 0; i < n; ++i) enforce(i);
     };
-    auto dummy2 = [](size_t n) noexcept {
+    auto volatile_noop = [](size_t n) noexcept {
         volatile size_t j;
         for (size_t i = 0; i < n; ++i) j = i;
         enforce(j);
     };
 
-    cout << "result: " << median(benchmark(fact20)) << endl;
-    cout << "result: " << median(benchmark(cube20)) << endl;
-    cout << "result: " << median(benchmark(dummy)) << endl;
-    cout << "result: " << median(benchmark(dummy2)) << endl;
+    cout << "zero_line: " << measure::zero_line << endl;
+    cout << "fact20: " << median(benchmark(fact20)) << endl;
+    cout << "cube20: " << median(benchmark(cube20)) << endl;
+    cout << "noop cycle: " << median(benchmark(noop)) << endl;
+    cout << "volatile cycle: " << median(benchmark(volatile_noop)) << endl;
     return 0;
 }

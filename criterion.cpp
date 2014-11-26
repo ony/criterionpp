@@ -40,16 +40,21 @@ namespace {
     constexpr std::chrono::milliseconds threshold {30};
     constexpr std::chrono::milliseconds over_thresh_threshold {300};
 
-    inline criterion::measure measure_zero_line(criterion::sysclock::duration time_limit = criterion::seconds(1))
+    criterion::measure measure_zero_line(criterion::sysclock::duration time_limit = criterion::seconds(2))
     {
         const auto dummy = [](size_t n) {
             for (size_t i = 0; i < n; ++i) criterion::enforce(i);
         };
 
         auto sample = criterion::benchmark(dummy, time_limit);
+        auto m = criterion::min_cpu(sample);
 
-        return criterion::min_cpu(sample);
+        cerr << "measurement overhead " << criterion::human(m.iteration_cpu_time()) << endl;
+
+        return m;
     }
+
+    const std::string clr_line = "\r\e[J";
 } // anonymous namespace
 
 namespace criterion {
@@ -59,11 +64,10 @@ namespace criterion {
 
     std::ostream &operator<<(std::ostream &os, const measure &m) noexcept
     {
-        typedef std::chrono::duration<double> duration;
         os << m.iters << " for " << human(m.time) << " (cpu " << human(m.cpu_time) << ")";
         if (m.iters > 0)
         {
-            os << " ~ " << human(duration(m.time) / m.iters) << "/cycle, cpu " << human(duration(m.cpu_time) / m.iters) << "/cycle";
+            os << " ~ " << human(m.iteration_time()) << "/cycle, cpu " << human(m.iteration_cpu_time()) << "/cycle";
         }
         return os;
     }
@@ -112,7 +116,7 @@ namespace criterion {
             measure &m = ms.back();
             auto end_time = m.run(run, iters);
 
-            cerr << m << "\r";
+            cerr << clr_line << m;
             ms.push_back(m);
 
             auto thresh_gross = m.time - threshold;
@@ -123,7 +127,7 @@ namespace criterion {
                 over_thresh > over_thresh_threshold &&
                 count >= 4)
             {
-                cerr << endl;
+                cerr << clr_line;
                 if (time_taken > minimum_time * 1.25)
                 {
                     cerr << "measurement took " << human(time_taken) << endl;
@@ -142,7 +146,7 @@ namespace criterion {
                 }
                 else if (iters_state > std::numeric_limits<decltype(iters)>::max())
                 {
-                    cerr << endl;
+                    cerr << clr_line;
                     return ms;
                 }
             }

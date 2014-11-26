@@ -68,6 +68,13 @@ namespace criterion {
         cpuclock::duration cpu_time;
         size_t iters = 0;
 
+        std::chrono::duration<double> iteration_time() const
+        { return std::chrono::duration<double>(time) / iters; }
+
+        std::chrono::duration<double> iteration_cpu_time() const
+        { return std::chrono::duration<double>(cpu_time) / iters; }
+
+
         /// Measure the execution of a benchmark a given number of times.
         /// Note that result is adjusted according "zero line" which
         ///      corresponds to cycle with a single statement of storing
