@@ -48,7 +48,7 @@ namespace {
 
         auto sample = criterion::benchmark(dummy, time_limit);
 
-        return criterion::median(sample);
+        return criterion::min_cpu(sample);
     }
 } // anonymous namespace
 
@@ -59,10 +59,11 @@ namespace criterion {
 
     std::ostream &operator<<(std::ostream &os, const measure &m) noexcept
     {
+        typedef std::chrono::duration<double> duration;
         os << m.iters << " for " << human(m.time) << " (cpu " << human(m.cpu_time) << ")";
         if (m.iters > 0)
         {
-            os << " ~ " << human(m.time / m.iters) << "/cycle, cpu " << human(m.cpu_time / m.iters) << "/cycle";
+            os << " ~ " << human(duration(m.time) / m.iters) << "/cycle, cpu " << human(duration(m.cpu_time) / m.iters) << "/cycle";
         }
         return os;
     }
@@ -150,6 +151,7 @@ namespace criterion {
 
     measure median(std::vector<measure> &sample) noexcept
     {
+        assert( !sample.empty() );
         size_t n = sample.size();
         size_t m = n / 2;
         auto it_middle = sample.begin() + m;
@@ -158,6 +160,15 @@ namespace criterion {
         };
         std::nth_element(sample.begin(), sample.begin() + m, sample.end(), measureLess);
         return *it_middle;
+    }
+
+    measure min_cpu(std::vector<measure> &sample) noexcept
+    {
+        assert( !sample.empty() );
+        const auto measureLess = [](const measure &a, const measure &b) {
+            return a.cpu_time * b.iters < b.cpu_time * a.iters;
+        };
+        return *std::min_element(sample.begin(), sample.end(), measureLess);
     }
 
 } // namespace criterion

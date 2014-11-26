@@ -100,8 +100,9 @@ namespace criterion {
                 static constexpr auto cpu_time_zero = decltype(cpu_time)::zero();
 
                 // note that time may hop around zero line and may go below it
-                if (time < time_zero) time = time_zero;
-                if (cpu_time < time_zero) cpu_time = cpu_time_zero;
+                // we expect to filter it out in statistics
+                //  if (time < time_zero) time = time_zero;
+                //  if (cpu_time < time_zero) cpu_time = cpu_time_zero;
             }
             iters = n;
             return end_time;
@@ -128,4 +129,8 @@ namespace criterion {
     measure median(std::vector<measure> &sample) noexcept;
     inline measure median(std::vector<measure> &&sample) noexcept
     { return median(sample); }
+
+    measure min_cpu(std::vector<measure> &sample) noexcept;
+    inline measure min_cpu(std::vector<measure> &&sample) noexcept
+    { return min_cpu(sample); }
 } // namespace criterion
