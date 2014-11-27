@@ -31,6 +31,8 @@
 using namespace std;
 
 namespace {
+    typedef std::chrono::duration<double> secf;
+
     // The amount of time a benchmark must run for in order for us to have some
     // trust in the raw measurement. We set this threshold so that we can
     // generate enough data to later perform meaningful statistical analyses.
@@ -51,6 +53,20 @@ namespace {
 
         cerr << "measurement overhead " << criterion::human(m.iteration_cpu_time()) << endl;
 
+        array<estimator<criterion::measure>, 1> estimators = {
+            [](decltype(sample) &sample) { return criterion::min_cpu(sample).iteration_cpu_time().count(); }
+        };
+
+        auto report = bootstrap(sample, 10000, estimators);
+        cout << criterion::human(secf(report[0].lbound)) << endl;
+        cout << criterion::human(secf(report[0].mean)) << endl;
+        cout << criterion::human(secf(report[0].ubound)) << endl;
+        cout << criterion::human(secf(report[0].stdev)) << endl;
+
+        // adjust measure
+        secf lbound_cpu_time { report[0].lbound * m.iters };
+        m.cpu_time = std::chrono::duration_cast<decltype(m.cpu_time)>(lbound_cpu_time);
+
         return m;
     }
 
@@ -58,8 +74,6 @@ namespace {
 } // anonymous namespace
 
 namespace criterion {
-    void enforce(int) noexcept {};
-
     measure measure::zero_line = measure_zero_line();
 
     std::ostream &operator<<(std::ostream &os, const measure &m) noexcept
@@ -173,6 +187,33 @@ namespace criterion {
             return a.cpu_time * b.iters < b.cpu_time * a.iters;
         };
         return *std::min_element(sample.begin(), sample.end(), measureLess);
+    }
+
+    analysis::analysis(std::vector<measure> &sample) noexcept
+    {
+        typedef std::chrono::duration<double> secf;
+        typedef decltype(sample) input;
+        array<estimator<criterion::measure>, 2> estimators = {
+            [](input &sample) { return criterion::median(sample).iteration_cpu_time().count(); },
+            [](input &sample) { return min_cpu(sample).iteration_cpu_time().count(); },
+        };
+        auto report = bootstrap(sample, 10000, estimators);
+        median = {
+            .value = secf(report[0].mean),
+            .lbound = secf(report[0].lbound),
+            .ubound = secf(report[0].ubound),
+        };
+
+        // TODO: mean, stdev, etc...
+    }
+
+    std::ostream &operator<<(std::ostream &os, const analysis &x) noexcept
+    {
+        os << "median: " << human(x.median.value)
+            << ", lb " << human(x.median.lbound)
+            << ", ub " << human(x.median.ubound)
+            << ", ci " << x.median.ci << endl;
+        return os;
     }
 
 } // namespace criterion

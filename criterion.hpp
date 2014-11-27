@@ -30,6 +30,8 @@
 #include <vector>
 #include <cassert>
 
+#include "statistiscs.hpp"
+
 namespace criterion {
 
     using seconds = std::chrono::seconds;
@@ -102,14 +104,6 @@ namespace criterion {
                 auto adjustment = zero_line.cpu_time * n / zero_line.iters;
                 time -= adjustment;
                 cpu_time -= adjustment;
-
-                static constexpr auto time_zero = decltype(time)::zero();
-                static constexpr auto cpu_time_zero = decltype(cpu_time)::zero();
-
-                // note that time may hop around zero line and may go below it
-                // we expect to filter it out in statistics
-                //  if (time < time_zero) time = time_zero;
-                //  if (cpu_time < time_zero) cpu_time = cpu_time_zero;
             }
             iters = n;
             return end_time;
@@ -140,4 +134,19 @@ namespace criterion {
     measure min_cpu(std::vector<measure> &sample) noexcept;
     inline measure min_cpu(std::vector<measure> &&sample) noexcept
     { return min_cpu(sample); }
+
+    /// A bit more complicated analysis
+    struct analysis
+    {
+        struct estimate {
+            std::chrono::duration<double> value, lbound, ubound;
+            static constexpr float ci = 0.997; // fixed
+        } mean, stdev, median;
+
+        analysis(std::vector<measure> &sample) noexcept;
+        analysis(std::vector<measure> &&sample) noexcept
+            : analysis(sample)
+        {}
+    };
+    std::ostream &operator<<(std::ostream &, const analysis &) noexcept;
 } // namespace criterion

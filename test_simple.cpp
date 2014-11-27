@@ -55,9 +55,9 @@ int main()
     };
 
     cout << "zero_line: " << measure::zero_line << endl;
-    cout << "fact20: " << median(benchmark(fact20)) << endl;
-    cout << "cube20: " << median(benchmark(cube20)) << endl;
-    cout << "noop cycle: " << median(benchmark(noop)) << endl;
-    cout << "volatile cycle: " << median(benchmark(volatile_noop)) << endl;
+    cout << "fact20:\n" << analysis(benchmark(fact20)) << endl;
+    cout << "cube20:\n" << analysis(benchmark(cube20)) << endl;
+    cout << "noop cycle:\n" << analysis(benchmark(noop)) << endl;
+    cout << "volatile cycle:\n" << analysis(benchmark(volatile_noop)) << endl;
     return 0;
 }
