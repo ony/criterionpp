@@ -109,6 +109,18 @@ namespace criterion {
             return end_time;
         }
 
+        measure &operator +=(const measure &other)
+        {
+            if (iters == 0) *this = other;
+            else if (other.iters != 0)
+            {
+                time += other.time;
+                cpu_time += other.cpu_time;
+                iters += other.iters;
+            }
+            return *this;
+        }
+
         static measure zero_line;
     };
     std::ostream &operator<<(std::ostream &, const measure &) noexcept;

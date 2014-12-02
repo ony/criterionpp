@@ -180,6 +180,14 @@ namespace criterion {
         return *it_middle;
     }
 
+    measure sum(const std::vector<measure> &sample) noexcept
+    {
+        assert( !sample.empty() );
+        measure sum;
+        for (const auto &m : sample) sum += m;
+        return sum;
+    }
+
     measure min_cpu(std::vector<measure> &sample) noexcept
     {
         assert( !sample.empty() );
@@ -193,8 +201,9 @@ namespace criterion {
     {
         typedef std::chrono::duration<double> secf;
         typedef decltype(sample) input;
-        array<estimator<criterion::measure>, 2> estimators = {
+        array<estimator<criterion::measure>, 3> estimators = {
             [](input &sample) { return criterion::median(sample).iteration_cpu_time().count(); },
+            [](input &sample) { return sum(sample).iteration_cpu_time().count(); },
             [](input &sample) { return min_cpu(sample).iteration_cpu_time().count(); },
         };
         auto report = bootstrap(sample, 10000, estimators);
@@ -204,11 +213,21 @@ namespace criterion {
             .ubound = secf(report[0].ubound),
         };
 
-        // TODO: mean, stdev, etc...
+        mean = {
+            .value = secf(report[1].mean),
+            .lbound = secf(report[1].lbound),
+            .ubound = secf(report[1].ubound),
+        };
+
+        // TODO: stdev, etc...
     }
 
     std::ostream &operator<<(std::ostream &os, const analysis &x) noexcept
     {
+        os << "mean: " << human(x.mean.value)
+            << ", lb " << human(x.mean.lbound)
+            << ", ub " << human(x.mean.ubound)
+            << ", ci " << x.mean.ci << endl;
         os << "median: " << human(x.median.value)
             << ", lb " << human(x.median.lbound)
             << ", ub " << human(x.median.ubound)
